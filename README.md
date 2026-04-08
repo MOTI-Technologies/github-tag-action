@@ -14,10 +14,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v5
       - name: Bump version and push tag
         id: tag_version
-        uses: mathieudutour/github-tag-action@v8.0
+        uses: MOTI-Technologies/github-tag-action@v8.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Create a GitHub release
