@@ -1,5 +1,9 @@
 /// <reference types="semver" />
 
+declare module 'conventional-changelog-conventionalcommits' {
+  export default function createPreset(config?: any): any;
+}
+
 declare module '@semantic-release/commit-analyzer' {
   export function analyzeCommits(
     config: {

@@ -1,6 +1,7 @@
 import * as core from '@actions/core';
 import { analyzeCommits } from '@semantic-release/commit-analyzer';
 import { generateNotes } from '@semantic-release/release-notes-generator';
+import conventionalcommits from 'conventional-changelog-conventionalcommits';
 import { gte, inc, parse, ReleaseType, SemVer, valid } from 'semver';
 import { createTag } from './github.js';
 import { Await } from './ts.js';
@@ -191,12 +192,14 @@ export default async function main() {
   core.info(`New tag after applying prefix is ${newTag}.`);
   core.setOutput('new_tag', newTag);
 
+  const changelogConfig = conventionalcommits({
+    types: mergeWithDefaultChangelogRules(mappedReleaseRules),
+  });
+
   const changelog = await generateNotes(
     {
-      preset: 'conventionalcommits',
-      presetConfig: {
-        types: mergeWithDefaultChangelogRules(mappedReleaseRules),
-      },
+      parserOpts: changelogConfig.parser,
+      writerOpts: changelogConfig.writer,
     },
     {
       commits,

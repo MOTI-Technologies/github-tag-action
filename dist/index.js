@@ -65634,6 +65634,454 @@ async function generateNotes(pluginConfig, context) {
   return getStream(intoStream.object(parsedCommits).pipe(conventional_changelog_writer(changelogContext, writerOpts)));
 }
 
+;// CONCATENATED MODULE: ./node_modules/conventional-changelog-conventionalcommits/src/constants.js
+const DEFAULT_COMMIT_TYPES = Object.freeze([
+  {
+    type: 'feat',
+    section: 'Features'
+  },
+  {
+    type: 'feature',
+    section: 'Features'
+  },
+  {
+    type: 'fix',
+    section: 'Bug Fixes'
+  },
+  {
+    type: 'perf',
+    section: 'Performance Improvements'
+  },
+  {
+    type: 'revert',
+    section: 'Reverts'
+  },
+  {
+    type: 'docs',
+    section: 'Documentation',
+    hidden: true
+  },
+  {
+    type: 'style',
+    section: 'Styles',
+    hidden: true
+  },
+  {
+    type: 'chore',
+    section: 'Miscellaneous Chores',
+    hidden: true
+  },
+  {
+    type: 'refactor',
+    section: 'Code Refactoring',
+    hidden: true
+  },
+  {
+    type: 'test',
+    section: 'Tests',
+    hidden: true
+  },
+  {
+    type: 'build',
+    section: 'Build System',
+    hidden: true
+  },
+  {
+    type: 'ci',
+    section: 'Continuous Integration',
+    hidden: true
+  }
+].map(Object.freeze))
+
+;// CONCATENATED MODULE: ./node_modules/conventional-changelog-conventionalcommits/src/parser.js
+function parser_createParserOpts(config) {
+  return {
+    headerPattern: /^(\w*)(?:\((.*)\))?!?: (.*)$/,
+    breakingHeaderPattern: /^(\w*)(?:\((.*)\))?!: (.*)$/,
+    headerCorrespondence: [
+      'type',
+      'scope',
+      'subject'
+    ],
+    noteKeywords: ['BREAKING CHANGE', 'BREAKING-CHANGE'],
+    revertPattern: /^(?:Revert|revert:)\s"?([\s\S]+?)"?\s*This reverts commit (\w*)\./i,
+    revertCorrespondence: ['header', 'hash'],
+    issuePrefixes: config?.issuePrefixes || ['#']
+  }
+}
+
+;// CONCATENATED MODULE: ./node_modules/conventional-changelog-conventionalcommits/src/utils.js
+function hasIntersection(a, b) {
+  if (!a || !b) {
+    return false
+  }
+
+  let listA = a
+  let listB = b
+
+  if (!Array.isArray(listA)) {
+    listA = [listA]
+  }
+
+  if (!Array.isArray(listB)) {
+    listB = [listB]
+  }
+
+  return listA.some(item => listB.includes(item))
+}
+
+function matchScope(config = {}, commit) {
+  const {
+    scope: targetScope,
+    scopeOnly = false
+  } = config
+  const includesScope = hasIntersection(
+    commit.scope?.split(','),
+    targetScope
+  )
+
+  return !targetScope
+    || (scopeOnly && includesScope)
+    || (!scopeOnly && (!commit.scope || includesScope))
+}
+
+;// CONCATENATED MODULE: ./node_modules/conventional-changelog-conventionalcommits/src/templates.js
+const src_templates_mainTemplate = `{{> header}}
+{{#if noteGroups}}
+{{#each noteGroups}}
+
+### ⚠ {{title}}
+
+{{#each notes}}
+* {{#if commit.scope}}**{{commit.scope}}:** {{/if}}{{text}}
+{{/each}}
+{{/each}}
+{{/if}}
+{{#each commitGroups}}
+
+{{#if title}}
+### {{title}}
+
+{{/if}}
+{{#each commits}}
+{{> commit root=@root}}
+{{/each}}
+{{/each}}
+{{> footer}}
+`
+
+const src_templates_headerPartial = `## {{#if @root.linkCompare~}}
+  [{{version}}]({{compareUrlFormat}})
+{{~else}}
+  {{~version}}
+{{~/if}}
+{{~#if title}} "{{title}}"
+{{~/if}}
+{{~#if date}} ({{date}})
+{{/if}}
+`
+
+const src_templates_commitPartial = `*{{#if scope}} **{{scope}}:**
+{{~/if}} {{#if subject}}
+  {{~subject}}
+{{~else}}
+  {{~header}}
+{{~/if}}
+
+{{~!-- commit link --}}{{~#if hash}} {{#if @root.linkReferences~}}
+  ([{{shortHash}}]({{commitUrlFormat}}))
+{{~else}}
+  {{~shortHash}}
+{{~/if}}{{~/if}}
+
+{{~!-- commit references --}}
+{{~#if references~}}
+  , closes
+  {{~#each references}} {{#if @root.linkReferences~}}
+    [
+    {{~#if this.owner}}
+      {{~this.owner}}/
+    {{~/if}}
+    {{~this.repository}}{{this.prefix}}{{this.issue}}]({{issueUrlFormat}})
+  {{~else}}
+    {{~#if this.owner}}
+      {{~this.owner}}/
+    {{~/if}}
+    {{~this.repository}}{{this.prefix}}{{this.issue}}
+  {{~/if}}{{/each}}
+{{~/if}}
+
+`
+
+const src_templates_footerPartial = ``
+
+;// CONCATENATED MODULE: ./node_modules/conventional-changelog-conventionalcommits/src/writer.js
+
+
+
+
+
+const writer_COMMIT_HASH_LENGTH = 7
+const releaseAsRegex = /release-as:\s*\w*@?([0-9]+\.[0-9]+\.[0-9a-z]+(-[0-9a-z.]+)?)\s*/i
+/**
+ * Handlebar partials for various property substitutions based on commit context.
+ */
+const owner = '{{#if this.owner}}{{~this.owner}}{{else}}{{~@root.owner}}{{/if}}'
+const host = '{{~@root.host}}'
+const repository = '{{#if this.repository}}{{~this.repository}}{{else}}{{~@root.repository}}{{/if}}'
+
+function writer_createWriterOpts(config) {
+  const finalConfig = {
+    types: DEFAULT_COMMIT_TYPES,
+    issueUrlFormat: '{{host}}/{{owner}}/{{repository}}/issues/{{id}}',
+    commitUrlFormat: '{{host}}/{{owner}}/{{repository}}/commit/{{hash}}',
+    compareUrlFormat: '{{host}}/{{owner}}/{{repository}}/compare/{{previousTag}}...{{currentTag}}',
+    userUrlFormat: '{{host}}/{{user}}',
+    issuePrefixes: ['#'],
+    ...config
+  }
+  const commitUrlFormat = expandTemplate(finalConfig.commitUrlFormat, {
+    host,
+    owner,
+    repository
+  })
+  const compareUrlFormat = expandTemplate(finalConfig.compareUrlFormat, {
+    host,
+    owner,
+    repository
+  })
+  const issueUrlFormat = expandTemplate(finalConfig.issueUrlFormat, {
+    host,
+    owner,
+    repository,
+    id: '{{this.issue}}',
+    prefix: '{{this.prefix}}'
+  })
+  const commitGroupOrder = finalConfig.types.flatMap(t => t.section).filter(t => t)
+
+  return {
+    mainTemplate: src_templates_mainTemplate,
+    headerPartial: src_templates_headerPartial
+      .replace(/{{compareUrlFormat}}/g, compareUrlFormat),
+    commitPartial: src_templates_commitPartial
+      .replace(/{{commitUrlFormat}}/g, commitUrlFormat)
+      .replace(/{{issueUrlFormat}}/g, issueUrlFormat),
+    footerPartial: src_templates_footerPartial,
+    transform: (commit, context) => {
+      let discard = true
+      const issues = []
+      const entry = findTypeEntry(finalConfig.types, commit)
+
+      // Add an entry in the CHANGELOG if special Release-As footer
+      // is used:
+      if ((commit.footer && releaseAsRegex.test(commit.footer))
+        || (commit.body && releaseAsRegex.test(commit.body))) {
+        discard = false
+      }
+
+      const notes = commit.notes.map((note) => {
+        discard = false
+
+        return {
+          ...note,
+          title: 'BREAKING CHANGES'
+        }
+      })
+
+      if (
+        // breaking changes attached to any type are still displayed.
+        discard && (entry === undefined || entry.hidden)
+        || !matchScope(finalConfig, commit)
+      ) {
+        return undefined
+      }
+
+      const type = entry
+        ? entry.section
+        : commit.type
+      const scope = commit.scope === '*' || finalConfig.scope
+        ? ''
+        : commit.scope
+      const shortHash = typeof commit.hash === 'string'
+        ? commit.hash.substring(0, writer_COMMIT_HASH_LENGTH)
+        : commit.shortHash
+      let { subject } = commit
+
+      if (typeof subject === 'string') {
+        // Issue URLs.
+        const issueRegEx = `(${finalConfig.issuePrefixes.join('|')})([a-z0-9]+)`
+        const re = new RegExp(issueRegEx, 'g')
+
+        subject = subject.replace(re, (_, prefix, issue) => {
+          issues.push(prefix + issue)
+
+          const url = expandTemplate(finalConfig.issueUrlFormat, {
+            host: context.host,
+            owner: context.owner,
+            repository: context.repository,
+            id: issue,
+            prefix
+          })
+
+          return `[${prefix}${issue}](${url})`
+        })
+        // User URLs.
+        subject = subject.replace(/`[^`]*`|\B@([a-z0-9](?:-?[a-z0-9/]){0,38})/g, (match, user) => {
+          if (!user) {
+            return match
+          }
+
+          // TODO: investigate why this code exists.
+          if (user.includes('/')) {
+            return `@${user}`
+          }
+
+          const usernameUrl = expandTemplate(finalConfig.userUrlFormat, {
+            host: context.host,
+            owner: context.owner,
+            repository: context.repository,
+            user
+          })
+
+          return `[@${user}](${usernameUrl})`
+        })
+      }
+
+      // remove references that already appear in the subject
+      const references = commit.references.filter(reference => !issues.includes(reference.prefix + reference.issue))
+
+      return {
+        notes,
+        type,
+        scope,
+        shortHash,
+        subject,
+        references
+      }
+    },
+    groupBy: 'type',
+    // the groupings of commit messages, e.g., Features vs., Bug Fixes, are
+    // sorted based on their probable importance:
+    commitGroupsSort: (a, b) => {
+      const gRankA = commitGroupOrder.indexOf(a.title)
+      const gRankB = commitGroupOrder.indexOf(b.title)
+
+      return gRankA - gRankB
+    },
+    commitsSort: ['scope', 'subject'],
+    noteGroupsSort: 'title',
+    notesSort: compare_func
+  }
+}
+
+function findTypeEntry(types, commit) {
+  const typeKey = (commit.revert ? 'revert' : commit.type || '').toLowerCase()
+
+  return types.find((entry) => {
+    if (entry.type !== typeKey) {
+      return false
+    }
+
+    if (entry.scope && entry.scope !== commit.scope) {
+      return false
+    }
+
+    return true
+  })
+}
+
+// expand on the simple mustache-style templates supported in
+// configuration (we may eventually want to use handlebars for this).
+function expandTemplate(template, context) {
+  let expanded = template
+
+  Object.keys(context).forEach((key) => {
+    expanded = expanded.replace(new RegExp(`{{${key}}}`, 'g'), context[key])
+  })
+
+  return expanded
+}
+
+;// CONCATENATED MODULE: ./node_modules/conventional-changelog-conventionalcommits/src/whatBump.js
+
+
+
+function createWhatBump(config = {}) {
+  const {
+    types = DEFAULT_COMMIT_TYPES,
+    bumpStrict = false
+  } = config
+  const hiddenTypes = bumpStrict && types.reduce((hiddenTypes, type) => {
+    if (type.hidden) {
+      hiddenTypes.push(type.type)
+    }
+
+    return hiddenTypes
+  }, [])
+
+  return function whatBump(commits) {
+    let level = 2
+    let breakings = 0
+    let features = 0
+    let bugfixes = 0
+
+    commits.forEach((commit) => {
+      if (!matchScope(config, commit)) {
+        return
+      }
+
+      if (commit.notes.length > 0) {
+        breakings += commit.notes.length
+        level = 0
+      } else
+        if (commit.type === 'feat' || commit.type === 'feature') {
+          features += 1
+
+          if (level === 2) {
+            level = 1
+          }
+        } else
+          if (bumpStrict && !hiddenTypes.includes(commit.type)) {
+            bugfixes += 1
+          }
+    })
+
+    if (config?.preMajor && level < 2) {
+      level++
+    } else
+      if (bumpStrict && level === 2 && !breakings && !features && !bugfixes) {
+        return null
+      }
+
+    return {
+      level,
+      reason: breakings === 1
+        ? `There is ${breakings} BREAKING CHANGE and ${features} features`
+        : `There are ${breakings} BREAKING CHANGES and ${features} features`
+    }
+  }
+}
+
+;// CONCATENATED MODULE: ./node_modules/conventional-changelog-conventionalcommits/src/index.js
+
+
+
+
+
+
+
+function src_createPreset(config) {
+  return {
+    commits: {
+      ignore: config?.ignoreCommits,
+      merges: false
+    },
+    parser: parser_createParserOpts(config),
+    writer: writer_createWriterOpts(config),
+    whatBump: createWhatBump(config)
+  }
+}
+
 ;// CONCATENATED MODULE: ./node_modules/@actions/github/lib/context.js
 
 
@@ -70106,6 +70554,7 @@ function mergeWithDefaultChangelogRules(mappedReleaseRules = []) {
 
 
 
+
 async function main() {
     const defaultBump = getInput('default_bump');
     const defaultPreReleaseBump = getInput('default_prerelease_bump');
@@ -70232,11 +70681,12 @@ async function main() {
     const newTag = `${tagPrefix}${newVersion}`;
     info(`New tag after applying prefix is ${newTag}.`);
     setOutput('new_tag', newTag);
+    const changelogConfig = src_createPreset({
+        types: mergeWithDefaultChangelogRules(mappedReleaseRules),
+    });
     const changelog = await generateNotes({
-        preset: 'conventionalcommits',
-        presetConfig: {
-            types: mergeWithDefaultChangelogRules(mappedReleaseRules),
-        },
+        parserOpts: changelogConfig.parser,
+        writerOpts: changelogConfig.writer,
     }, {
         commits,
         logger: { log: console.info.bind(console) },
