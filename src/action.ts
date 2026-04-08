@@ -1,19 +1,19 @@
 import * as core from '@actions/core';
-import { gte, inc, parse, ReleaseType, SemVer, valid } from 'semver';
 import { analyzeCommits } from '@semantic-release/commit-analyzer';
 import { generateNotes } from '@semantic-release/release-notes-generator';
+import { gte, inc, parse, ReleaseType, SemVer, valid } from 'semver';
+import { createTag } from './github.js';
+import { Await } from './ts.js';
 import {
   getBranchFromRef,
-  isPr,
   getCommits,
   getLatestPrereleaseTag,
   getLatestTag,
   getValidTags,
+  isPr,
   mapCustomReleaseRules,
   mergeWithDefaultChangelogRules,
-} from './utils';
-import { createTag } from './github';
-import { Await } from './ts';
+} from './utils.js';
 
 export default async function main() {
   const defaultBump = core.getInput('default_bump') as ReleaseType | 'false';

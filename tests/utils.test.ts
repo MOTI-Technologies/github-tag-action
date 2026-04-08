@@ -1,11 +1,15 @@
+import * as core from '@actions/core';
+import { describe, expect, it, vi } from 'vitest';
+import { defaultChangelogRules } from '../src/defaults';
+import * as github from '../src/github';
 import * as utils from '../src/utils';
 import { getValidTags } from '../src/utils';
-import * as core from '@actions/core';
-import * as github from '../src/github';
-import { defaultChangelogRules } from '../src/defaults';
 
-jest.spyOn(core, 'debug').mockImplementation(() => {});
-jest.spyOn(core, 'warning').mockImplementation(() => {});
+vi.mock('@actions/core', { spy: true });
+vi.mock('../src/github', { spy: true });
+
+vi.mocked(core.debug).mockImplementation(() => {});
+vi.mocked(core.warning).mockImplementation(() => {});
 
 const regex = /^v/;
 
@@ -64,8 +68,7 @@ describe('utils', () => {
         node_id: 'string',
       },
     ];
-    const mockListTags = jest
-      .spyOn(github, 'listTags')
+    const mockListTags = vi.mocked(github.listTags)
       .mockImplementation(async () => testTags);
 
     /*
@@ -114,8 +117,7 @@ describe('utils', () => {
         node_id: 'string',
       },
     ];
-    const mockListTags = jest
-      .spyOn(github, 'listTags')
+    const mockListTags = vi.mocked(github.listTags)
       .mockImplementation(async () => testTags);
 
     /*
@@ -163,8 +165,7 @@ describe('utils', () => {
         node_id: 'string',
       },
     ];
-    const mockListTags = jest
-      .spyOn(github, 'listTags')
+    const mockListTags = vi.mocked(github.listTags)
       .mockImplementation(async () => testTags);
     /*
      * When

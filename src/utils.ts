@@ -1,10 +1,10 @@
 import * as core from '@actions/core';
 import { prerelease, rcompare, valid } from 'semver';
-// @ts-ignore
-import DEFAULT_RELEASE_TYPES from '@semantic-release/commit-analyzer/lib/default-release-types';
-import { compareCommits, listTags } from './github';
-import { defaultChangelogRules } from './defaults';
-import { Await } from './ts';
+import { defaultChangelogRules } from './defaults.js';
+import { compareCommits, listTags } from './github.js';
+import { Await } from './ts.js';
+
+const DEFAULT_RELEASE_TYPES = ['major', 'premajor', 'minor', 'preminor', 'patch', 'prepatch', 'prerelease'];
 
 type Tags = Await<ReturnType<typeof listTags>>;
 
