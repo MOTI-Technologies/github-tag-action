@@ -41,6 +41,7 @@ declare module '@semantic-release/release-notes-generator' {
     args: {
       commits: { message: string; hash: string | null }[];
       logger: { log: (args: any) => void };
+      cwd?: string;
       options: {
         repositoryUrl: string;
       };

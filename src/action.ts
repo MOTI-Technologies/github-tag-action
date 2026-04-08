@@ -201,6 +201,7 @@ export default async function main() {
     {
       commits,
       logger: { log: console.info.bind(console) },
+      cwd: process.cwd(),
       options: {
         repositoryUrl: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}`,
       },
