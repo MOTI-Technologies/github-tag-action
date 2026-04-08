@@ -56,10 +56,9 @@ export async function compareCommits(baseRef: string, headRef: string) {
   const octokit = getOctokitSingleton();
   core.debug(`Comparing commits (${baseRef}...${headRef})`);
 
-  const commits = await octokit.rest.repos.compareCommits({
+  const commits = await octokit.rest.repos.compareCommitsWithBasehead({
     ...context.repo,
-    base: baseRef,
-    head: headRef,
+    basehead: `${baseRef}...${headRef}`,
   });
 
   return commits.data.commits;
